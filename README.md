@@ -27,7 +27,7 @@ The project is fully functional and has completed environmental and operational 
 * media     - Processed bird footage, recorded videos
   [Media](media/)
 * docs      - Reports, assembly guides, and research documentation
-  [Documentation](Documentation/)
+  [Documentation](Documents/)
 
 
 
@@ -59,7 +59,7 @@ The project is fully functional and has completed environmental and operational 
 
 
 ## Bill of Materials (BOM)
-[Documentation](Documentation/)
+[Documentation](Documents/)
 ### Tools Used
 
 * **Software:** Kdenlive, SAM 2, Python/Flask, systemd
