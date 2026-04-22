@@ -1,0 +1,123 @@
+from flask import Flask, render_template_string
+import subprocess
+import socket
+import os
+
+bird_status = "IDLE"
+
+subprocess.Popen([
+    "mpv",
+    "--input-ipc-server=/tmp/mpvpipe",
+    "--loop-file=inf",
+    "--vo=gpu",
+    "--input-vo-keyboard=no",
+    "/mnt/vid/rotation-12000.webm",
+    "/mnt/vid/ButterflyVideo.mp4"
+])
+
+app = Flask(__name__)
+# Same pipe as birdi.cc
+IPC_PATH = "/tmp/mpvpipe"
+
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bird Remote</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #222; color: white; }
+        .btn { background: #007bff; border: none; color: white; padding: 40px; 
+               font-size: 24px; border-radius: 15px; margin-top: 50px; width: 80%; cursor: pointer; }
+        .btn-green { background: #28a745; }
+        .btn-black { background: #444; margin-top: 20px; }
+        .btn-red { background: #dc3545; margin-top: 50px; }
+    </style>
+    <script>
+        function updateTemp() {
+            fetch('/')
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newTemp = doc.querySelector('#temp-display').innerHTML;
+                document.querySelector('#temp-display').innerHTML = newTemp;
+            });
+        }
+        setInterval(updateTemp, 5000);
+    </script>
+</head>
+<body>
+    <h1>Bird Projector Control</h1>
+    <p style="color: #007bff; font-size: 22px; font-weight: bold;">
+        Current Pi Temp: <span id="temp-display">{{ temp }}</span>C
+    </p>
+    <form action="/start" method="post"><button class="btn btn-green">Start / Reset Birds</button></form>
+    <form action="/next" method="post"><button class="btn">Next Video</button></form>
+    <form action="/blackout" method="post"><button class="btn btn-black">Power Off</button></form>
+    <form action="/quit" method="post"><button class="btn btn-red">Stop Video & Exit to Terminal</button></form>
+</body>
+</html>
+"""
+
+def get_cpu_temp():
+    res = os.popen('vcgencmd measure_temp').readline()
+    return res.replace("temp=","").replace("'C\n","")
+
+def send_to_mpv(command):
+    if os.path.exists(IPC_PATH):
+        try:
+            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            client.connect(IPC_PATH)
+            client.send(command.encode())
+            client.close()
+        except:
+            print("Failed to connect to MPV pipe. Is it running?")
+
+#Read status so arduino / birdbox
+@app.route('/status')
+def status():
+    global bird_status
+    return bird_status
+
+@app.route('/')
+def index():
+    temp = get_cpu_temp()
+    return render_template_string(HTML, temp=temp)
+
+import time
+
+@app.route('/start', methods=['POST'])
+def start_birds():
+    global bird_status
+    bird_status = "PLAYING"
+    send_to_mpv('{"command": ["loadfile", "/mnt/vid/rotation-12000.webm", "replace"]}\n')
+    time.sleep(0.2)
+    send_to_mpv('{"command": ["loadfile", "/mnt/vid/ButterflyVideo.mp4", "append"]}\n')
+    return render_template_string(HTML)
+
+@app.route('/next', methods=['POST'])
+def next_vid():
+    # Simple 'playlist-next' works better for web buttons than manual loadfile
+    global bird_status
+    bird_status = "PLAYING"
+    send_to_mpv('{"command": ["playlist-next"]}\n')
+    return render_template_string(HTML)
+
+@app.route('/blackout', methods=['POST'])
+def blackout():
+    global bird_status
+    bird_status = "IDLE"
+    #Uses path from blank video to define
+    send_to_mpv('{"command": ["loadfile", "/home/oshe/blackscreen.webm", "replace"]}\n')
+    return render_template_string(HTML)
+
+@app.route('/quit', methods=['POST'])
+def quit_video():
+    global bird_status
+    bird_status = "IDLE"
+    send_to_mpv('{"command": ["quit"]}\n')
+    return render_template_string(HTML)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
