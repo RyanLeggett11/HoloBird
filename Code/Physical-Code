@@ -1,1 +1,78 @@
+#include <chrono>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <thread>
+#include <unistd.h>
 
+#include <gpiod.hpp>
+
+#define INPUT_PIN 16
+#define SOCKET_PATH "/tmp/mpvpipe"
+std::vector<std::string> video_list = {
+"/mnt/vid/rotation-looped-720.webm",
+"/mnt/vid/ButterflyVideo.mp4"
+};
+int video_index = 0;
+bool blank_p = false;
+bool detected = false;
+#define BLANK_VIDEO "/home/oshe/blackscreen.webm"
+#define GPIO_CHIP "gpiochip4"
+
+int main() {
+    try {
+        int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (sock < 0) {
+            perror("socket");
+            return 1;
+        }
+
+        sockaddr_un addr{};
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+        if (connect(sock, (sockaddr *)&addr, sizeof(addr)) < 0) {
+            perror("connect");
+            close(sock);
+            return 1;
+        }
+
+        gpiod::chip chip(GPIO_CHIP);
+        gpiod::line line = chip.get_line(INPUT_PIN);
+
+        line.request({"birdi", gpiod::line_request::DIRECTION_INPUT, gpiod::line_request::FLAG_BIAS_PULL_UP});
+        //line.request({"birdi", gpiod::line_request::DIRECTION_INPUT, gpiod::line_request::EVENT_BOTH_EDGES, 0});
+
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            int val = line.get_value();
+            if (val == 0) {
+                if (!detected) {
+                    detected = true;
+                    std::ostringstream ss {};
+                    if (blank_p) {
+                        ss << "{\"command\": [\"loadfile\", \"" << BLANK_VIDEO << "\", \"replace\"]}\n";
+                        blank_p = false;
+                    } else {
+                        ss << "{\"command\": [\"loadfile\", \"" << video_list[video_index] << "\", \"replace\"]}\n";
+                        video_index = (video_index + 1) % video_list.size();
+                        blank_p = false;
+                    }
+                    std::string cmd = ss.str();
+                    std::cout << "Action: " << cmd << std::flush;
+                    if (write(sock, cmd.c_str(), cmd.size()) < 0) {
+                        perror("write to mpv failed");
+                    }
+                }
+            } else {
+                detected = false;
+            }
+        }
+        close(sock);
+    } catch (const std::exception &e) {
+        std::cerr << "err: " << e.what() << std::endl;
+    }
+    return 0;
+}
