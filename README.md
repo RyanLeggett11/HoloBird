@@ -59,7 +59,7 @@ The project is fully functional and has completed environmental and operational 
 
 
 ## Bill of Materials (BOM)
-[Documentation](Documents/)
+[BOM](Documents/)
 ### Tools Used
 
 * **Software:** Kdenlive, SAM 2, Python/Flask, systemd
