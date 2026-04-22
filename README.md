@@ -144,8 +144,8 @@ Supported by the Open Source Hardware Enterprise (OSHE) at Michigan Technologica
 
 ## Helpful Links
 
-https://kdenlive.org
-https://projects.raspberrypi.org/en/projects/getting-started-with-guis
-https://doi.org/10.1242/jeb.209031
+* https://kdenlive.org
+* https://projects.raspberrypi.org/en/projects/getting-started-with-guis
+* https://doi.org/10.1242/jeb.209031
 
 
