@@ -23,8 +23,11 @@ The project is fully functional and has completed environmental and operational 
 ## Project Structure
 
 * software  - Python web controller, physical controls code, systemd configs, video playback (mpv + Cage)
+  [Software](Code/)
 * media     - Processed bird footage, recorded videos
+  [Media](media/)
 * docs      - Reports, assembly guides, and research documentation
+  [Documentation](Documentation/)
 
 
 
@@ -56,7 +59,7 @@ The project is fully functional and has completed environmental and operational 
 
 
 ## Bill of Materials (BOM)
-
+[Documentation](Documentation/)
 ### Tools Used
 
 * **Software:** Kdenlive, SAM 2, Python/Flask, systemd
